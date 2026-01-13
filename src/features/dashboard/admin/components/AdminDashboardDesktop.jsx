@@ -1,14 +1,20 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../../services/supabase';
 
 export default function AdminDashboardDesktop() {
     const [activeTab, setActiveTab] = useState('Overview');
     const [users, setUsers] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const navigate = useNavigate();
 
     // Form states
     const [formData, setFormData] = useState({ type: 'siswa', name: '', identifier: '' });
     const [msg, setMsg] = useState({ text: '', type: '' });
+
+    const handleLogout = () => {
+        navigate('/login');
+    };
 
     const stats = [
         { label: 'Total Siswa', value: '1,240', change: '+12%', color: 'bg-blue-500' },
@@ -36,18 +42,29 @@ export default function AdminDashboardDesktop() {
 
         try {
             const isSiswa = formData.type === 'siswa';
+            const identifierField = isSiswa ? 'nis' : 'email';
 
-            // Untuk Siswa: Langsung insert ke profiles (karena login via NIS verify)
-            // Untuk Guru: Di prototype ini kita insert ke profiles. 
-            // Catatan: Real Guru butuh Email Auth.
+            // 1. Cek apakah identifier sudah ada di database
+            const { data: existing, error: checkError } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq(identifierField, formData.identifier)
+                .maybeSingle();
+
+            if (checkError) throw checkError;
+            if (existing) {
+                throw new Error(`${isSiswa ? 'NIS' : 'Email'} sudah terdaftar!`);
+            }
+
+            // 2. Jika belum ada, lakukan insert
             const payload = {
                 full_name: formData.name,
                 role: formData.type,
-                [isSiswa ? 'nis' : 'email']: formData.identifier
+                [identifierField]: formData.identifier
             };
 
-            const { error } = await supabase.from('profiles').insert([payload]);
-            if (error) throw error;
+            const { error: insertError } = await supabase.from('profiles').insert([payload]);
+            if (insertError) throw insertError;
 
             setMsg({ text: `Berhasil menambah ${formData.type}!`, type: 'success' });
             setFormData({ ...formData, name: '', identifier: '' });
@@ -60,13 +77,13 @@ export default function AdminDashboardDesktop() {
     return (
         <div className="flex h-screen bg-[#f8fafc]">
             {/* Sidebar */}
-            <aside className="w-64 border-r border-slate-200 bg-white p-6">
+            <aside className="w-64 border-r border-slate-200 bg-white p-6 flex flex-col">
                 <div className="mb-10 flex items-center gap-3">
                     <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#2f6bff] to-[#2656d0] shadow-lg shadow-blue-200" />
                     <span className="text-xl font-bold tracking-tight text-slate-800">AdminPanel</span>
                 </div>
 
-                <nav className="space-y-1">
+                <nav className="space-y-1 flex-1">
                     {['Overview', 'Manajemen User', 'Akademik', 'Laporan', 'Pengaturan'].map((item) => (
                         <button
                             key={item}
@@ -81,8 +98,14 @@ export default function AdminDashboardDesktop() {
                     ))}
                 </nav>
 
-                <div className="mt-auto pt-6 text-center">
-                    <button className="w-full rounded-xl bg-slate-100 py-3 text-sm font-bold text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors">
+                <div className="mt-auto pt-6 border-t border-slate-50 text-center">
+                    <button
+                        onClick={handleLogout}
+                        className="w-full rounded-xl bg-slate-100 py-3 text-sm font-bold text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors flex items-center justify-center gap-2"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
                         Logout
                     </button>
                 </div>

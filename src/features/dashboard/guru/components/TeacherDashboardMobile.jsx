@@ -1,12 +1,22 @@
+import { useNavigate } from 'react-router-dom';
+
 export default function TeacherDashboardMobile() {
+    const navigate = useNavigate();
+    const handleLogout = () => navigate('/login');
+
     return (
         <div className="min-h-screen bg-[#f8fafc] pb-24">
-            <header className="flex items-center justify-between bg-white px-6 py-4 shadow-sm">
+            <header className="flex items-center justify-between bg-white px-6 py-4 shadow-sm sticky top-0 z-10">
                 <div className="flex items-center gap-3">
                     <div className="h-8 w-8 rounded-lg bg-emerald-600" />
                     <span className="font-bold tracking-tight text-slate-800">GuruPortal</span>
                 </div>
-                <div className="h-10 w-10 rounded-full bg-slate-200" />
+                <button
+                    onClick={handleLogout}
+                    className="h-9 px-4 rounded-lg bg-red-50 text-red-600 text-[11px] font-bold uppercase tracking-wider active:scale-95 transition-transform"
+                >
+                    Logout
+                </button>
             </header>
 
             <main className="px-6 pt-8">

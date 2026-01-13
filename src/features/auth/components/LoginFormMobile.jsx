@@ -8,7 +8,6 @@ const inputBase =
 export default function LoginFormMobile() {
     const [role, setRole] = useState('admin');
     const [identifier, setIdentifier] = useState('');
-    const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const navigate = useNavigate();
@@ -18,32 +17,24 @@ export default function LoginFormMobile() {
         setErrorMsg('');
 
         try {
-            if (role === 'siswa') {
-                if (!identifier) throw new Error('NIS wajib diisi');
-
-                const { data: profile, error: profileError } = await supabase
-                    .from('profiles')
-                    .select('id, role')
-                    .eq('nis', identifier)
-                    .eq('role', 'siswa')
-                    .single();
-
-                if (profileError || !profile) {
-                    throw new Error('NIS tidak ditemukan atau Anda bukan siswa');
-                }
-
-                navigate(`/dashboard/siswa`);
-                return;
+            if (!identifier) {
+                throw new Error(role === 'siswa' ? 'NIS wajib diisi' : 'Email wajib diisi');
             }
 
-            if (!identifier || !password) throw new Error('Email dan Password wajib diisi');
+            const isSiswa = role === 'siswa';
+            const column = isSiswa ? 'nis' : 'email';
 
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email: identifier,
-                password: password,
-            });
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('id, role')
+                .eq(column, identifier)
+                .eq('role', role)
+                .single();
 
-            if (error) throw error;
+            if (profileError || !profile) {
+                throw new Error(`${isSiswa ? 'NIS' : 'Email'} tidak ditemukan atau Anda bukan ${role}`);
+            }
+
             navigate(`/dashboard/${role}`);
         } catch (err) {
             setErrorMsg(err.message || 'Login gagal.');
@@ -118,20 +109,6 @@ export default function LoginFormMobile() {
                             />
                         </div>
 
-                        {role !== 'siswa' && (
-                            <div className="space-y-1.5">
-                                <label htmlFor="login-password-mobile" className="ml-1 text-sm font-semibold text-slate-700">
-                                    Password
-                                </label>
-                                <input
-                                    id="login-password-mobile"
-                                    className={inputBase}
-                                    type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                />
-                            </div>
-                        )}
                     </div>
 
                     <button

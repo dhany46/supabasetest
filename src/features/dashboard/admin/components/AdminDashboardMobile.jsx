@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../../services/supabase';
 
 export default function AdminDashboardMobile() {
     const [activeTab, setActiveTab] = useState('Dashboard');
     const [users, setUsers] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        navigate('/login');
+    };
 
     // Form states
     const [formData, setFormData] = useState({ type: 'siswa', name: '', identifier: '' });
@@ -35,14 +41,29 @@ export default function AdminDashboardMobile() {
 
         try {
             const isSiswa = formData.type === 'siswa';
+            const identifierField = isSiswa ? 'nis' : 'email';
+
+            // 1. Cek apakah identifier sudah ada
+            const { data: existing, error: checkError } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq(identifierField, formData.identifier)
+                .maybeSingle();
+
+            if (checkError) throw checkError;
+            if (existing) {
+                throw new Error(`${isSiswa ? 'NIS' : 'Email'} sudah ada!`);
+            }
+
+            // 2. Lakukan insert
             const payload = {
                 full_name: formData.name,
                 role: formData.type,
-                [isSiswa ? 'nis' : 'email']: formData.identifier
+                [identifierField]: formData.identifier
             };
 
-            const { error } = await supabase.from('profiles').insert([payload]);
-            if (error) throw error;
+            const { error: insertError } = await supabase.from('profiles').insert([payload]);
+            if (insertError) throw insertError;
 
             setMsg({ text: `Berhasil!`, type: 'success' });
             setFormData({ ...formData, name: '', identifier: '' });
@@ -61,7 +82,12 @@ export default function AdminDashboardMobile() {
                     <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#2f6bff] to-[#2656d0]" />
                     <span className="font-bold tracking-tight text-slate-800">AdminPanel</span>
                 </div>
-                <div className="h-10 w-10 rounded-full bg-slate-200" />
+                <button
+                    onClick={handleLogout}
+                    className="h-9 px-4 rounded-lg bg-red-50 text-red-600 text-[11px] font-bold uppercase tracking-wider active:scale-95 transition-transform"
+                >
+                    Logout
+                </button>
             </header>
 
             <main className="px-6 pt-8">
